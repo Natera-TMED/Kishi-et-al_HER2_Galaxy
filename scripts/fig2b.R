@@ -3,6 +3,7 @@
 library(survival)
 library(survminer)
 library(dplyr)
+library(coxphf)
 
 # setting
 axis_title_size  <- 12
@@ -32,10 +33,15 @@ fit <- survfit(surv_obj ~ `HER2_amp`, data = df_stage)
 lg  <- survdiff(surv_obj ~ `HER2_amp`, data=df_stage)
 p_logrank <- pchisq(lg$chisq, df = length(lg$n) - 1, lower.tail = FALSE)
 
-cx <- coxph(surv_obj ~ `HER2_amp`, data=df_stage)
-hr <- exp(coef(cx))[1]
-ci <- exp(confint(cx))[1, ]
-p_cox <- summary(cx)$coefficients[1, "Pr(>|z|)"] # 今回は使わないが、Coxのp値の計算
+# cx <- coxph(surv_obj ~ `HER2_amp`, data=df_stage)
+cx <- coxphf(surv_obj ~ `HER2_amp`, data=df_stage)
+
+# hr <- exp(coef(cx))[1]
+# ci <- exp(confint(cx))[1, ]
+# p_cox <- summary(cx)$coefficients[1, "Pr(>|z|)"] # 今回は使わないが、Coxのp値の計算
+hr <- exp(coefficients(cx))[1]
+ci  <- exp(confint(cx))[1, ]
+p_cox <- summary(cx)$prob[1] 
 
 # 3year-DFS
 sf36 <- summary(fit, times = 36)
@@ -63,7 +69,7 @@ lines_3yr <- sprintf("%s: %s%% (95%%CI %s–%s)",
 
 # pvalue, HR
 label_text <- paste0(
-  sprintf("log-rank p=%.4f\nCox HR=%.2f (95%%CI %.2f–%.2f)",
+  sprintf("log-rank p=%.4f\nFirth-corrected Cox HR=%.2f (95%%CI %.2f–%.2f)",
           p_logrank, hr, ci[1], ci[2]),
   "\n3-year DFS\n  ", paste(lines_3yr, collapse = "\n  ")
 )
